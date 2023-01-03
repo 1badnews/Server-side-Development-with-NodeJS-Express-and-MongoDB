@@ -3,7 +3,7 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
-var session = require('./express-session');
+var session = require('express-session');
 var FileStore = require('session-file-store')(session);
 
 var indexRouter = require('./routes/index');
@@ -40,53 +40,34 @@ app.use(session({
   resave: false,
   store: new FileStore()
 }));
-
+app.use('/', indexRouter);
+app.use('/users', usersRouter);
 function auth(req,res,next)
 {
-  console.log(req.signedCookies);
+  console.log(req.session);
 
-  if (!req.signedCookies.user)
+  if (!req.session.user)
   {
-    var authHeader = req.headers.authorization;
+   
 
-  if (!authHeader)
-  {
-    var err = new Error('Unauthorized');
+    var err = new Error('Unauthenticated');
     res.setHeader('WWW-Authenticate', 'Basic');
     err.status = 401;
     return next(err);
   }
 
-  var auth = new Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':'); // make array of strings from headers
-
-  var username = auth[0];
-  var password = auth[1];
-
-  if(username === 'admin' && password === 'password')
-  {
-    res.cookie('user', 'admin', {signed: true})
-    next();
-  }
-  else 
-  {
-    var err = new Error('Unauthorized');
-    res.setHeader('WWW-Authenticate', 'Basic');
-    err.status = 401;
-    return next(err);
-  }
-  }
   else
   {
-    if (req.signedCookies.user === 'admin')
+    if (req.session.user === 'authenticated')
     {
       next();
     }
   
   else
   {
-    var err = new Error('Unauthorized');
+    var err = new Error('Unauthenticated');
     res.setHeader('WWW-Authenticate', 'Basic');
-    err.status = 401;
+    err.status = 403;
     return next(err);
   }
 }
@@ -96,8 +77,7 @@ app.use(auth); // authenticate users
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
+
 app.use('/dishes',dishRouter);
 app.use('/promotions',promoRouter);
 app.use('/leaders',leaderRouter);
