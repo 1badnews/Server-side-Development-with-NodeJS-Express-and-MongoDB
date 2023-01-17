@@ -38,3 +38,11 @@ exports.jwtPassport = passport.use(new JwtStrategy(opts, (jwt_payload, done) => 
 }));
 
 exports.verifyUser = passport.authenticate('jwt', {session:false});
+
+exports.verifyAdmin = (req, res, next) =>{
+        if(req.user.admin){
+            next();
+        }else{
+            res.status(403).send("Unauthorized");
+        }
+    }
