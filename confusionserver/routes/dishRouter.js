@@ -30,6 +30,7 @@ dishRouter.route('/')
     .catch((err) => next(err));
 })
 .put(authenticate.verifyUser, authenticate.verifyAdmin, (req,res,next) => {
+    console.log(req.user)
     res.statusCode = 403;
     res.end('PUT operation not supported on /dishes');
 })
@@ -57,6 +58,7 @@ dishRouter.route('/:dishId')
     .catch((err) => next(err));
 })
 .post(authenticate.verifyUser, authenticate.verifyAdmin,(req,res,next) => {
+    console.log(req.user)
     res.statusCode=403;
     res.end('Post operation not supported on /dishes/?');
 })
@@ -189,7 +191,10 @@ dishRouter.route('/:dishId/comments/:commentId')
 .put(authenticate.verifyUser, (req, res, next) => {
     Dishes.findById(req.params.dishId)
     .then((dish) => {
-        if (dish != null && dish.comments.id(req.params.commentId) != null) {
+        console.log(req.user._id)
+        console.log(dish.comments.id(req.params.commentId).author._id)
+        
+        if (dish != null && dish.comments.id(req.params.commentId) != null && dish.comments.id(req.params.commentId).author._id.equals(req.user._id) ) {
             if (req.body.rating) {
                 dish.comments.id(req.params.commentId).rating = req.body.rating;
             }
@@ -212,10 +217,16 @@ dishRouter.route('/:dishId/comments/:commentId')
             err.status = 404;
             return next(err);
         }
-        else {
+        else if (dish.comments.id(req.params.commentId) == null) {
             err = new Error('Comment ' + req.params.commentId + ' not found');
             err.status = 404;
             return next(err);            
+        
+        }
+        else {
+            err = new Error('You did not post this comment');
+            err.status = 403;
+            return next(err);     
         }
     }, (err) => next(err))
     .catch((err) => next(err));
@@ -223,7 +234,7 @@ dishRouter.route('/:dishId/comments/:commentId')
 .delete(authenticate.verifyUser, (req, res, next) => {
     Dishes.findById(req.params.dishId)
     .then((dish) => {
-        if (dish != null && dish.comments.id(req.params.commentId) != null) {
+        if (dish != null && dish.comments.id(req.params.commentId) != null && dish.comments.id(req.params.commentId).author._id.equals(req.user._id)) {
 
             dish.comments.id(req.params.commentId).remove();
             dish.save()
@@ -242,9 +253,14 @@ dishRouter.route('/:dishId/comments/:commentId')
             err.status = 404;
             return next(err);
         }
-        else {
+        else if (dish.comments.id(req.params.commentId) == null){
             err = new Error('Comment ' + req.params.commentId + ' not found');
             err.status = 404;
+            return next(err);            
+        }
+        else {
+            err = new Error('You did not post this comment!');
+            err.status = 403;
             return next(err);            
         }
     }, (err) => next(err))
